@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(npx tailwindcss:*)",
+      "Bash(./node_modules/.bin/tailwindcss:*)",
+      "Bash(npm run build:*)",
+      "Bash(timeout 5 npm run dev:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run build:mac:*)",
+      "Bash(npx asar:*)",
+      "Bash(ELECTRON=true npx tsc:*)",
+      "Bash(npx electron-builder:*)",
+      "Bash(open:*)",
+      "Bash(pkill:*)",
+      "Bash(ELECTRON=true npx vite build:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(npx vite build:*)",
+      "Bash(echo:*)",
+      "Bash(ps:*)",
+      "Bash(kill:*)",
+      "Bash(DEBUG=electron-builder npm run build:mac:*)",
+      "Bash(ls:*)",
+      "Bash(chmod:*)",
+      "Bash(gh auth status:*)",
+      "Bash(git init:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nInitial commit: NTU GPA Calculator\n\nReact 19 + TypeScript + Vite + Electron desktop app for NTU students\nto track modules, GPA, analytics, course planning, and timetables.\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")"
+    ]
+  }
+}
