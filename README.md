@@ -137,6 +137,14 @@ electron/
 
 ## NTU Grading Reference
 
+### Calculation Formula
+
+```
+CGPA = Σ (Grade Point × AU) / Σ (Total AU attempted)
+```
+
+All letter-graded courses — including F — count toward the total AU in the denominator. Only excluded grades (S/U, P/F, EX, TC, IP, LOA) are omitted from both the numerator and denominator.
+
 ### Grade Points
 
 | Grade | Points | Grade | Points |
@@ -147,17 +155,25 @@ electron/
 | B     | 3.5    | D     | 1.0    |
 | B-    | 3.0    | F     | 0.0    |
 
-Grades S, U, P, Pass, Fail, EX, TC, IP, and LOA are excluded from GPA calculation.
+### Example Calculation
+
+Given: Module A (3 AU, A-), Module B (3 AU, B), Module C (4 AU, F), Module D (3 AU, S)
+
+1. Convert grades: A- = 4.5, B = 3.5, F = 0.0. **S is excluded.**
+2. Weighted sum: (4.5 × 3) + (3.5 × 3) + (0.0 × 4) = 13.5 + 10.5 + 0 = **24.0**
+3. Total AU: 3 + 3 + 4 = **10** (Module D excluded)
+4. CGPA: 24.0 / 10 = **2.40** (Pass)
 
 ### Honours Classification
 
 | Classification | CGPA |
 |---------------|------|
-| First Class Honours | >= 4.5 |
-| Second Class Upper | >= 4.0 |
-| Second Class Lower | >= 3.5 |
-| Third Class | >= 3.0 |
-| Pass | >= 2.0 |
+| First Class Honours | >= 4.50 |
+| Second Class Upper | 4.00 – 4.49 |
+| Second Class Lower | 3.50 – 3.99 |
+| Third Class | 3.00 – 3.49 |
+| Pass | 2.00 – 2.99 |
+| Academic Warning/Termination | < 2.00 |
 
 ### Dean's List
 Awarded per semester when GPA >= 4.5 **and** at least 15 graded AU in that semester.

@@ -43,7 +43,7 @@ No router library — `App.tsx` switches views via `currentView` from the store.
 
 ### GPA Calculation (`src/utils/gpa.ts`)
 
-`calculateCompositeStats()` is the core function. It returns both **official** (Completed modules only) and **projected** (includes In Progress/Not Started with assigned grades) GPAs. NTU uses a 5.0 scale (A+/A = 5.0 → F = 0.0). Grades S, U, P, Pass, Fail, EX, TC, IP, LOA are excluded from GPA.
+`calculateCompositeStats()` is the core function. It returns both **official** (Completed modules only) and **projected** (includes In Progress/Not Started with assigned grades) GPAs. Formula: `CGPA = Σ(Grade Point × AU) / Σ(Total AU attempted)`. All letter-graded courses including F count in the denominator. NTU uses a 5.0 scale (A+/A = 5.0 → F = 0.0). Grades S, U, P, Pass, Fail, EX, TC, IP, LOA are excluded from both numerator and denominator.
 
 ### Types
 
