@@ -70,3 +70,42 @@ When making significant changes to the codebase (new features, removed features,
 ## Pre-Commit Requirements
 
 **Before every commit, you MUST run `npm run build:mac` and verify it succeeds.** Do not commit if the Electron build fails. Fix any TypeScript errors, lint issues, or build failures first. This ensures the desktop app is always in a buildable state.
+
+## Commit Message Style
+
+Write detailed, structured commit messages. Follow this format:
+
+```
+<type>(<scope>): <short summary>
+
+<detailed description explaining WHY the change was made, not just what changed>
+
+Changes:
+- <specific change 1 with file path and what was modified>
+- <specific change 2 with file path and what was modified>
+- ...
+
+<optional: context about trade-offs, alternatives considered, or follow-up needed>
+
+Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
+```
+
+Types: `feat`, `fix`, `refactor`, `docs`, `style`, `test`, `chore`, `ci`
+Scopes: `electron`, `ui`, `store`, `gpa`, `analytics`, `planner`, `timetable`, `goals`, `predictions`, `build`
+
+Example:
+```
+feat(electron): add window drag region and traffic light clearance
+
+The Electron app uses hiddenInset titlebar for a clean macOS look, but
+this removed the native drag area making the window unmovable. Users
+could not reposition the app window after launch.
+
+Changes:
+- src/components/layout/Header.tsx: added invisible drag overlay div with
+  88px left padding to clear macOS traffic lights (close/minimize/maximize)
+- src/index.css: added -webkit-app-region: drag/no-drag rules so interactive
+  elements (buttons, inputs, links) remain clickable within the drag zone
+
+Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
+```
