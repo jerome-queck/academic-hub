@@ -49,7 +49,14 @@ const Slider = forwardRef<HTMLInputElement, SliderProps>(
             )}
           </div>
         )}
-        <div className="relative">
+        <div className="relative h-5 flex items-center">
+          {/* Track background */}
+          <div className="absolute left-0 right-0 h-2 bg-gray-200 dark:bg-gray-700 rounded-full" />
+          {/* Track fill */}
+          <div
+            className="absolute left-0 h-2 bg-primary-600 rounded-full pointer-events-none"
+            style={{ width: `${percentage}%` }}
+          />
           <input
             ref={ref}
             type="range"
@@ -60,7 +67,7 @@ const Slider = forwardRef<HTMLInputElement, SliderProps>(
             onChange={(e) => onChange(parseFloat(e.target.value))}
             disabled={disabled}
             className={cn(
-              'w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full appearance-none cursor-pointer',
+              'relative w-full h-2 bg-transparent rounded-full appearance-none cursor-pointer',
               'focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
               'disabled:opacity-50 disabled:cursor-not-allowed',
               '[&::-webkit-slider-thumb]:appearance-none',
@@ -83,15 +90,7 @@ const Slider = forwardRef<HTMLInputElement, SliderProps>(
               '[&::-moz-range-thumb]:shadow-md',
               '[&::-moz-range-thumb]:cursor-pointer'
             )}
-            style={{
-              background: `linear-gradient(to right, rgb(var(--color-primary-600, 37 99 235)) ${percentage}%, rgb(var(--color-gray-200, 229 231 235)) ${percentage}%)`,
-            }}
             {...props}
-          />
-          {/* Track fill */}
-          <div
-            className="absolute top-0 left-0 h-2 bg-primary-600 rounded-full pointer-events-none"
-            style={{ width: `${percentage}%` }}
           />
         </div>
         {/* Marks */}

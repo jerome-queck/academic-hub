@@ -55,7 +55,9 @@ export function Header({ onMenuClick, onAddModule }: HeaderProps) {
 
   return (
     <header className="sticky top-0 z-40 w-full bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-gray-200 dark:border-gray-800">
-      <div className="flex items-center justify-between h-16 px-4 md:px-6">
+      {/* Drag region for Electron window (hiddenInset titlebar) */}
+      <div className="absolute inset-0 app-drag-region" />
+      <div className="relative flex items-center justify-between h-16 pr-4 md:pr-6" style={{ paddingLeft: '88px' }}>
         {/* Left section */}
         <div className="flex items-center gap-4">
           {/* Mobile menu button */}

@@ -1,73 +1,63 @@
-# React + TypeScript + Vite
+# NTU GPA Calculator
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A desktop and web application for Nanyang Technological University (NTU) students to track modules, calculate GPA, plan courses, and monitor academic progress.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Module Management** — Add, edit, and delete modules with grades, AU, and status tracking
+- **GPA Tracking** — Real-time official and projected GPA using NTU's 5.0 scale
+- **Analytics** — GPA trends, grade distribution, Dean's List tracking, graduation readiness
+- **Course Planner** — Plan future semesters with prerequisite validation
+- **Predictions** — "What grade do I need?" calculator and what-if scenarios
+- **Goal Setting** — Set CGPA and semester targets with progress visualization
+- **Timetable** — Color-coded weekly class schedule
+- **Data Portability** — Export/import JSON backups
+- **Dark Mode** — System-aware theme switching
 
-## React Compiler
+## Tech Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- React 19, TypeScript 5.9, Tailwind CSS 4
+- Vite (rolldown-vite) for builds
+- Electron 40 for desktop (macOS, Windows, Linux)
+- Zustand 5 with Immer for state management
+- Framer Motion for animations, Recharts for charts
 
-## Expanding the ESLint configuration
+## Getting Started
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+```bash
+# Install dependencies
+npm install
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+# Web development
+npm run dev
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+# Electron development
+npm run dev:electron
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Building
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+```bash
+# Web
+npm run build
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+# Electron (per platform)
+npm run build:mac
+npm run build:win
+npm run build:linux
 ```
+
+## NTU Grading
+
+| Grade | Points | Grade | Points |
+|-------|--------|-------|--------|
+| A+/A  | 5.0    | C+    | 2.5    |
+| A-    | 4.5    | C     | 2.0    |
+| B+    | 4.0    | D+    | 1.5    |
+| B     | 3.5    | D     | 1.0    |
+| B-    | 3.0    | F     | 0.0    |
+
+Grades S, U, P, Pass, Fail, EX, TC, IP, LOA are excluded from GPA calculation.
+
+- **Dean's List**: Semester GPA >= 4.5 with >= 15 graded AU
+- **First Class Honours**: CGPA >= 4.5

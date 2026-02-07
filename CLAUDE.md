@@ -62,3 +62,11 @@ Uses CSS-first configuration (`@import "tailwindcss"` in `index.css`). **Critica
 - Dean's List: semester GPA ≥ 4.5 AND ≥ 15 graded AU
 - Honours classification: First Class (≥4.5), Second Upper (≥4.0), Second Lower (≥3.5), Third Class (≥3.0)
 - Default degree target: 130 AU
+
+## Maintenance Rules
+
+When making significant changes to the codebase (new features, removed features, changed commands, updated tech stack, or modified build steps), update `README.md` to reflect those changes. Keep the README in sync with the actual state of the project.
+
+## Pre-Commit Requirements
+
+**Before every commit, you MUST run `npm run build:mac` and verify it succeeds.** Do not commit if the Electron build fails. Fix any TypeScript errors, lint issues, or build failures first. This ensures the desktop app is always in a buildable state.

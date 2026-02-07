@@ -512,7 +512,7 @@ export function ModuleManagement({ onEditModule, onAddModule }: ModuleManagement
         </thead>
         <tbody className="divide-y divide-gray-100 dark:divide-gray-700/50">
           <AnimatePresence>
-            {mods.map((mod, rowIdx) => {
+            {mods.map((mod) => {
               const accent = getRowAccent(mod);
               const globalRowIdx = filtered.indexOf(mod);
               const isRowFocused = focusedCell?.row === globalRowIdx;

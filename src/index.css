@@ -40,6 +40,19 @@
   }
 }
 
+/* Electron window drag region */
+.app-drag-region {
+  -webkit-app-region: drag;
+}
+
+.app-drag-region ~ * button,
+.app-drag-region ~ * a,
+.app-drag-region ~ * input,
+.app-drag-region ~ * kbd,
+.app-drag-region ~ * [role="button"] {
+  -webkit-app-region: no-drag;
+}
+
 /* Custom component styles */
 @layer components {
   /* Scrollbar styles */
