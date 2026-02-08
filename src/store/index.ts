@@ -287,7 +287,7 @@ export const useStore = create<AppState>()(
 
       // Academic Calendar actions
       setAcademicCalendar: (year, semester, calendar) => set((state) => {
-        let timetable = state.timetables.find(t => t.year === year && t.semester === semester);
+        const timetable = state.timetables.find(t => t.year === year && t.semester === semester);
         if (!timetable) {
           state.timetables.push({ year, semester, entries: [], examinations: [], calendar });
           return;

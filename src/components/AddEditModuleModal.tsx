@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
@@ -42,6 +42,20 @@ const AddEditModuleModal: React.FC<Props> = ({
   const [prereqInput, setPrereqInput] = useState('');
   const [currentPrereqs, setCurrentPrereqs] = useState<string[]>([]);
 
+  const resetForm = useCallback(() => {
+    setCode('');
+    setName('');
+    setAu(3);
+    setType('Core');
+    setStatus('Not Started');
+    setGrade('');
+    setProjectedGrade('');
+    setYear(defaultYear);
+    setSemester(defaultSem);
+    setCurrentPrereqs([]);
+    setPrereqInput('');
+  }, [defaultYear, defaultSem]);
+
   useEffect(() => {
     if (moduleToEdit) {
       setCode(moduleToEdit.code);
@@ -57,21 +71,7 @@ const AddEditModuleModal: React.FC<Props> = ({
     } else {
       resetForm();
     }
-  }, [moduleToEdit, show, defaultYear, defaultSem]);
-
-  const resetForm = () => {
-    setCode('');
-    setName('');
-    setAu(3);
-    setType('Core');
-    setStatus('Not Started');
-    setGrade('');
-    setProjectedGrade('');
-    setYear(defaultYear);
-    setSemester(defaultSem);
-    setCurrentPrereqs([]);
-    setPrereqInput('');
-  };
+  }, [moduleToEdit, show, resetForm]);
 
   const handleAddPrereq = () => {
     if (prereqInput && !currentPrereqs.includes(prereqInput.toUpperCase())) {

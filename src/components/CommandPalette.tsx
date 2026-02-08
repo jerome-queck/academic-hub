@@ -183,11 +183,6 @@ export function CommandPalette({ onAddModule, onToggleTheme }: CommandPalettePro
     selectedElement?.scrollIntoView({ block: 'nearest' });
   }, [selectedIndex]);
 
-  // Reset selected index when query changes
-  useEffect(() => {
-    setSelectedIndex(0);
-  }, [query]);
-
   const categoryLabels: Record<string, string> = {
     navigation: 'Navigation',
     actions: 'Actions',
@@ -237,7 +232,10 @@ export function CommandPalette({ onAddModule, onToggleTheme }: CommandPalettePro
                   ref={inputRef}
                   type="text"
                   value={query}
-                  onChange={(e) => setQuery(e.target.value)}
+                  onChange={(e) => {
+                    setQuery(e.target.value);
+                    setSelectedIndex(0);
+                  }}
                   onKeyDown={handleKeyDown}
                   placeholder="Type a command or search..."
                   className="flex-1 bg-transparent text-gray-900 dark:text-white placeholder-gray-400 outline-none text-base"

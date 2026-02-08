@@ -99,9 +99,6 @@ export function ModuleManagement({ onEditModule, onAddModule }: ModuleManagement
   const { modules, addModule, updateModule, deleteModule, deleteModules, moveModules } = useStore();
   const { canUndo, canRedo, undo, redo, lastAction } = useUndoRedo();
 
-  // Keyboard navigation (initialized later with filtered data)
-  const keyboardColumnsRef = useRef<string[]>([]);
-
   // Filters
   const [search, setSearch] = useState('');
   const [filterYear, setFilterYear] = useState<number | ''>('');
@@ -457,16 +454,16 @@ export function ModuleManagement({ onEditModule, onAddModule }: ModuleManagement
   );
 
   const visibleCols = ALL_COLUMNS.filter(c => visibleColumns.has(c.id));
+  const keyboardColumns = useMemo(() => visibleCols.map(c => c.id), [visibleCols]);
 
   // Keyboard navigation
-  keyboardColumnsRef.current = visibleCols.map(c => c.id);
   const { focusedCell } = useTableKeyboard({
     rowCount: filtered.length,
     columnCount: visibleCols.length,
     onEditCell: (row, col) => {
       const mod = filtered[row];
       if (mod) {
-        const colId = keyboardColumnsRef.current[col];
+        const colId = keyboardColumns[col];
         if (colId) setEditingCell(`${mod.id}:${colId}`);
       }
     },
