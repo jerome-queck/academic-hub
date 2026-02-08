@@ -1,5 +1,15 @@
-import type { Module, SemesterStats, ChartDataPoint } from '../types';
+import { MODULE_TYPES } from '../types';
+import type { Module, SemesterStats, ChartDataPoint, ModuleTypeRequirements } from '../types';
 import { calculateCompositeStats, GRADE_POINTS, EXCLUDED_GRADES } from '../utils/gpa';
+
+/**
+ * Check if a semester is fully completed (all modules have status 'Completed').
+ * Returns false if the semester has no modules.
+ */
+export function isSemesterComplete(modules: Module[], year: number, semester: number): boolean {
+  const semModules = modules.filter(m => m.year === year && m.semester === semester);
+  return semModules.length > 0 && semModules.every(m => m.status === 'Completed');
+}
 
 /**
  * Get semester-by-semester statistics
@@ -9,6 +19,7 @@ export function getSemesterHistory(modules: Module[]): SemesterStats[] {
 
   for (let year = 1; year <= 4; year++) {
     for (let semester = 1; semester <= 2; semester++) {
+      if (!isSemesterComplete(modules, year, semester)) continue;
       const semModules = modules.filter(
         m => m.year === year && m.semester === semester
       );
@@ -124,6 +135,7 @@ export function getSemesterWorkloadData(modules: Module[]): ChartDataPoint[] {
 
   for (let year = 1; year <= 4; year++) {
     for (let semester = 1; semester <= 2; semester++) {
+      if (!isSemesterComplete(modules, year, semester)) continue;
       const semModules = modules.filter(
         m => m.year === year && m.semester === semester
       );
@@ -152,6 +164,7 @@ export function getCumulativeVsSemesterData(modules: Module[]): Array<{
 
   for (let year = 1; year <= 4; year++) {
     for (let semester = 1; semester <= 2; semester++) {
+      if (!isSemesterComplete(modules, year, semester)) continue;
       const semModules = modules.filter(
         m => m.year === year && m.semester === semester
       );
@@ -173,34 +186,68 @@ export function getCumulativeVsSemesterData(modules: Module[]): Array<{
 }
 
 /**
- * Check Dean's List eligibility per semester
- * NTU: Semester GPA >= 4.5 with >= 15 AU graded
+ * Check Dean's List eligibility per academic year
+ * NTU: Year GPA >= 4.5 with >= 15 graded AU in the year
  */
 export function getDeanListData(modules: Module[]): Array<{
   label: string;
+  year: number;
   gpa: number;
   gradedAU: number;
   eligible: boolean;
+  semesters: Array<{ label: string; gpa: number; gradedAU: number }>;
 }> {
-  const results: Array<{ label: string; gpa: number; gradedAU: number; eligible: boolean }> = [];
+  const results: Array<{
+    label: string;
+    year: number;
+    gpa: number;
+    gradedAU: number;
+    eligible: boolean;
+    semesters: Array<{ label: string; gpa: number; gradedAU: number }>;
+  }> = [];
 
   for (let year = 1; year <= 4; year++) {
-    for (let semester = 1; semester <= 2; semester++) {
-      const semModules = modules.filter(
-        m => m.year === year && m.semester === semester
-      );
-      if (semModules.length === 0) continue;
+    const s1Complete = isSemesterComplete(modules, year, 1);
+    const s2Complete = isSemesterComplete(modules, year, 2);
 
-      const stats = calculateCompositeStats(semModules);
-      const gradedAU = stats.official.au;
+    // Skip year if no completed semesters
+    if (!s1Complete && !s2Complete) continue;
 
-      results.push({
-        label: `Y${year}S${semester}`,
-        gpa: stats.official.gpa,
-        gradedAU,
-        eligible: stats.official.gpa >= 4.5 && gradedAU >= 15,
-      });
+    const yearModules = modules.filter(m => m.year === year);
+    // Only include completed semesters in the year calculation
+    const completedYearModules = yearModules.filter(m =>
+      (m.semester === 1 && s1Complete) || (m.semester === 2 && s2Complete)
+    );
+    if (completedYearModules.length === 0) continue;
+
+    const stats = calculateCompositeStats(completedYearModules);
+    const gradedAU = stats.official.au;
+
+    // Build per-semester breakdown
+    const semesters: Array<{ label: string; gpa: number; gradedAU: number }> = [];
+    if (s1Complete) {
+      const s1Modules = yearModules.filter(m => m.semester === 1);
+      if (s1Modules.length > 0) {
+        const s1Stats = calculateCompositeStats(s1Modules);
+        semesters.push({ label: `Y${year}S1`, gpa: s1Stats.official.gpa, gradedAU: s1Stats.official.au });
+      }
     }
+    if (s2Complete) {
+      const s2Modules = yearModules.filter(m => m.semester === 2);
+      if (s2Modules.length > 0) {
+        const s2Stats = calculateCompositeStats(s2Modules);
+        semesters.push({ label: `Y${year}S2`, gpa: s2Stats.official.gpa, gradedAU: s2Stats.official.au });
+      }
+    }
+
+    results.push({
+      label: `Year ${year}`,
+      year,
+      gpa: stats.official.gpa,
+      gradedAU,
+      eligible: stats.official.gpa >= 4.5 && gradedAU >= 15,
+      semesters,
+    });
   }
 
   return results;
@@ -209,29 +256,41 @@ export function getDeanListData(modules: Module[]): Array<{
 /**
  * Get graduation readiness data
  */
-export function getGraduationReadiness(modules: Module[], targetAU: number = 130): {
+export function getGraduationReadiness(
+  modules: Module[],
+  targetAU: number = 130,
+  requirements: ModuleTypeRequirements = {}
+): {
   completedAU: number;
   inProgressAU: number;
   plannedAU: number;
   remainingAU: number;
   targetAU: number;
   percentComplete: number;
-  typeCoverage: Array<{ type: string; au: number; count: number }>;
+  typeCoverage: Array<{ type: string; au: number; count: number; requiredAU: number | null; percentComplete: number }>;
 } {
   let completedAU = 0;
   let inProgressAU = 0;
   let plannedAU = 0;
 
-  const typeMap: Record<string, { au: number; count: number }> = {};
+  // Only count completed modules in the type coverage table
+  const completedTypeMap: Record<string, { au: number; count: number }> = {};
 
   modules.forEach(m => {
     if (m.status === 'Completed') completedAU += m.au;
     else if (m.status === 'In Progress') inProgressAU += m.au;
     else plannedAU += m.au;
 
-    if (!typeMap[m.type]) typeMap[m.type] = { au: 0, count: 0 };
-    typeMap[m.type].au += m.au;
-    typeMap[m.type].count += 1;
+    if (m.status === 'Completed') {
+      if (!completedTypeMap[m.type]) completedTypeMap[m.type] = { au: 0, count: 0 };
+      completedTypeMap[m.type].au += m.au;
+      completedTypeMap[m.type].count += 1;
+    }
+  });
+
+  // Seed all module types so zero-count types appear in the table
+  MODULE_TYPES.forEach(t => {
+    if (!completedTypeMap[t]) completedTypeMap[t] = { au: 0, count: 0 };
   });
 
   const totalTracked = completedAU + inProgressAU + plannedAU;
@@ -243,10 +302,17 @@ export function getGraduationReadiness(modules: Module[], targetAU: number = 130
     remainingAU: Math.max(0, targetAU - totalTracked),
     targetAU,
     percentComplete: targetAU > 0 ? (completedAU / targetAU) * 100 : 0,
-    typeCoverage: Object.entries(typeMap).map(([type, data]) => ({
-      type,
-      ...data,
-    })),
+    typeCoverage: Object.entries(completedTypeMap)
+      .map(([type, data]) => {
+        const req = requirements[type as keyof typeof requirements] ?? null;
+        return {
+          type,
+          ...data,
+          requiredAU: req,
+          percentComplete: req ? Math.min(100, (data.au / req) * 100) : 0,
+        };
+      })
+      .sort((a, b) => b.au - a.au || a.type.localeCompare(b.type)),
   };
 }
 
@@ -368,7 +434,7 @@ export function getPerformanceInsights(modules: Module[]): {
   strongestType: string | null;
 } {
   const semesterHistory = getSemesterHistory(modules);
-  const typeBreakdown = getModuleTypeBreakdown(modules);
+  const typeBreakdown = getModuleTypeBreakdown(modules.filter(m => m.status === 'Completed'));
 
   // Best/worst semester
   let bestSemester: { label: string; gpa: number } | null = null;
@@ -384,17 +450,24 @@ export function getPerformanceInsights(modules: Module[]): {
     }
   });
 
-  // Best module (highest grade)
+  // Best module (highest grade, with rank tiebreaking for A+ vs A etc.)
+  const GRADE_RANK: Record<string, number> = {
+    'A+': 12, 'A': 11, 'A-': 10, 'B+': 9, 'B': 8, 'B-': 7,
+    'C+': 6, 'C': 5, 'D+': 4, 'D': 3, 'F': 1,
+  };
   const completedModules = modules.filter(
     m => m.status === 'Completed' && m.grade && GRADE_POINTS[m.grade] !== undefined
   );
   let bestModule: { code: string; grade: string } | null = null;
   let highestPoints = -1;
+  let highestRank = -1;
 
   completedModules.forEach(m => {
     const points = GRADE_POINTS[m.grade!];
-    if (points > highestPoints) {
+    const rank = GRADE_RANK[m.grade!] ?? 0;
+    if (points > highestPoints || (points === highestPoints && rank > highestRank)) {
       highestPoints = points;
+      highestRank = rank;
       bestModule = { code: m.code, grade: m.grade! };
     }
   });
