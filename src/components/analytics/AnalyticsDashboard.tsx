@@ -20,7 +20,8 @@ export function AnalyticsDashboard() {
   const { modules } = useStore();
   const insights = getPerformanceInsights(modules);
   const semesterChanges = getSemesterChanges(modules);
-  const typeBreakdown = getModuleTypeBreakdown(modules);
+  const completedModules = modules.filter(m => m.status === 'Completed');
+  const typeBreakdown = getModuleTypeBreakdown(completedModules);
 
   return (
     <div>
