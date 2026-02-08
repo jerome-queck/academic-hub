@@ -68,8 +68,8 @@ Weekly class schedule view. Add lectures, tutorials, labs, and seminars with day
 ### Installation
 
 ```bash
-git clone https://github.com/jerome-queck/gpacalculator.git
-cd gpacalculator
+git clone https://github.com/jerome-queck/academic-hub.git
+cd academic-hub
 npm install
 ```
 
