@@ -71,6 +71,10 @@ When making significant changes to the codebase (new features, removed features,
 
 **Before every commit, you MUST run `npm run build:mac` and verify it succeeds.** Do not commit if the Electron build fails. Fix any TypeScript errors, lint issues, or build failures first. This ensures the desktop app is always in a buildable state.
 
+## GitHub Push Requirement
+
+When the task is to "commit changes" (or equivalent), do not stop at a local git commit. After committing, you MUST push the commit to the repository's GitHub remote unless the user explicitly asks for a local-only commit.
+
 ## Commit Message Style
 
 Write detailed, structured commit messages. Follow this format:
