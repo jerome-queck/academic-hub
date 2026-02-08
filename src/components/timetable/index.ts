@@ -1,1 +1,10 @@
 export { TimetableView } from './TimetableView';
+export { AddTimetableEntryModal } from './AddTimetableEntryModal';
+export { AddExaminationModal } from './AddExaminationModal';
+export { WeekNavigator } from './WeekNavigator';
+export { WeekSelector } from './WeekSelector';
+export { CalendarSettings } from './CalendarSettings';
+export { ModulePanel } from './ModulePanel';
+export { ModuleTimetableSection } from './ModuleTimetableSection';
+export { DraggableTimetableEntry } from './DraggableTimetableEntry';
+export { DroppableTimeSlot } from './DroppableTimeSlot';

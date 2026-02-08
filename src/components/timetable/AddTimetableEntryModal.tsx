@@ -1,9 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Modal, Button, Input, Select } from '../ui';
+import { WeekSelector } from './WeekSelector';
 import { cn, generateId } from '../../lib/utils';
-import type { TimetableEntry, DayOfWeek, ClassType, Module } from '../../types';
+import { TOTAL_TEACHING_WEEKS } from '../../utils/academic-calendar';
+import type { TimetableEntry, DayOfWeek, ClassType, Module, AcademicWeek } from '../../types';
 
-const DAYS: DayOfWeek[] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const DAYS: DayOfWeek[] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const CLASS_TYPES: ClassType[] = ['Lecture', 'Tutorial', 'Lab', 'Seminar', 'Other'];
 
 const NTU_PRESETS = [
@@ -30,8 +32,10 @@ interface AddTimetableEntryModalProps {
   entry: TimetableEntry | null;
   prefillDay: DayOfWeek | null;
   prefillTime: string | null;
+  prefillModule?: Module | null;
   semModules: Module[];
   colorMap: Record<string, string>;
+  academicWeeks?: AcademicWeek[];
 }
 
 export function AddTimetableEntryModal({
@@ -42,8 +46,10 @@ export function AddTimetableEntryModal({
   entry,
   prefillDay,
   prefillTime,
+  prefillModule,
   semModules,
   colorMap,
+  academicWeeks,
 }: AddTimetableEntryModalProps) {
   const isEditing = !!entry;
 
@@ -60,8 +66,22 @@ export function AddTimetableEntryModal({
   const [venue, setVenue] = useState('');
   const [notes, setNotes] = useState('');
 
+  // Recurrence state
+  const [recurring, setRecurring] = useState(true);
+  const allTeachingWeeks = useMemo(() => Array.from({ length: TOTAL_TEACHING_WEEKS }, (_, i) => i + 1), []);
+  const [selectedWeeks, setSelectedWeeks] = useState<number[]>(allTeachingWeeks);
+  const [includeRecessWeek, setIncludeRecessWeek] = useState(false);
+  const [specificDate, setSpecificDate] = useState('');
+
   // Validation
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Whether module is locked (prefilled from ModulePanel)
+  const isModuleLocked = !!prefillModule;
+
+  // Date constraints for one-off events
+  const dateMin = academicWeeks?.[0] ? formatDateForInput(academicWeeks[0].startDate) : '';
+  const dateMax = academicWeeks?.[academicWeeks.length - 1] ? formatDateForInput(academicWeeks[academicWeeks.length - 1].endDate) : '';
 
   // Module options for the select dropdown
   const moduleOptions = useMemo(() => {
@@ -87,6 +107,10 @@ export function AddTimetableEntryModal({
       setClassType(entry.classType);
       setVenue(entry.venue);
       setNotes(entry.notes || '');
+      setRecurring(entry.recurring);
+      setSelectedWeeks(entry.weeks || allTeachingWeeks);
+      setIncludeRecessWeek(entry.includeRecessWeek || false);
+      setSpecificDate(entry.specificDate || '');
 
       // Check if entry time matches a preset
       const timeStr = `${entry.startTime} - ${entry.endTime}`;
@@ -100,11 +124,16 @@ export function AddTimetableEntryModal({
       setEndTime(entry.endTime);
     } else {
       // New entry mode
-      setModuleSelection(semModules.length > 0 ? semModules[0].code : 'custom');
-      if (semModules.length > 0) {
+      if (prefillModule) {
+        setModuleSelection(prefillModule.code);
+        setModuleCode(prefillModule.code);
+        setModuleName(prefillModule.name);
+      } else if (semModules.length > 0) {
+        setModuleSelection(semModules[0].code);
         setModuleCode(semModules[0].code);
         setModuleName(semModules[0].name);
       } else {
+        setModuleSelection('custom');
         setModuleCode('');
         setModuleName('');
       }
@@ -113,6 +142,10 @@ export function AddTimetableEntryModal({
       setVenue('');
       setNotes('');
       setUsePreset(true);
+      setRecurring(true);
+      setSelectedWeeks(allTeachingWeeks);
+      setIncludeRecessWeek(false);
+      setSpecificDate('');
 
       // If prefillTime provided, try to match a preset
       if (prefillTime) {
@@ -125,7 +158,6 @@ export function AddTimetableEntryModal({
         } else {
           setUsePreset(false);
           setStartTime(prefillTime);
-          // Default end time: 1 hour after start
           const [h, m] = prefillTime.split(':').map(Number);
           const endH = h + 1;
           setEndTime(`${String(endH).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
@@ -137,7 +169,7 @@ export function AddTimetableEntryModal({
       }
     }
     setErrors({});
-  }, [isOpen, entry, prefillDay, prefillTime, semModules]);
+  }, [isOpen, entry, prefillDay, prefillTime, prefillModule, semModules, allTeachingWeeks]);
 
   // When module selection changes from dropdown
   const handleModuleChange = (value: string) => {
@@ -162,6 +194,11 @@ export function AddTimetableEntryModal({
     const [s, e] = value.split(' - ');
     setStartTime(s);
     setEndTime(e);
+  };
+
+  const handleWeeksChange = (weeks: number[], includeRecess: boolean) => {
+    setSelectedWeeks(weeks);
+    setIncludeRecessWeek(includeRecess);
   };
 
   const validate = (): boolean => {
@@ -189,6 +226,14 @@ export function AddTimetableEntryModal({
       }
     }
 
+    // Validate recurrence
+    if (recurring && selectedWeeks.length === 0 && !includeRecessWeek) {
+      newErrors.weeks = 'Select at least one week';
+    }
+    if (!recurring && !specificDate) {
+      newErrors.date = 'Date is required for one-off events';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -198,6 +243,11 @@ export function AddTimetableEntryModal({
 
     const finalStartTime = usePreset ? presetSlot.split(' - ')[0] : startTime;
     const finalEndTime = usePreset ? presetSlot.split(' - ')[1] : endTime;
+
+    // Determine weeks to store: undefined if all 13 are selected (default behavior)
+    const weeksToStore = recurring
+      ? (selectedWeeks.length === TOTAL_TEACHING_WEEKS ? undefined : selectedWeeks)
+      : undefined;
 
     const newEntry: TimetableEntry = {
       id: entry?.id || generateId(),
@@ -210,6 +260,10 @@ export function AddTimetableEntryModal({
       classType,
       color: entry?.color || colorMap[moduleCode.trim()],
       notes: notes.trim() || undefined,
+      recurring,
+      weeks: weeksToStore,
+      includeRecessWeek: recurring ? includeRecessWeek : undefined,
+      specificDate: !recurring ? specificDate : undefined,
     };
 
     onSave(newEntry);
@@ -225,31 +279,45 @@ export function AddTimetableEntryModal({
     >
       <div className="space-y-4">
         {/* Module Selection */}
-        <Select
-          label="Module"
-          value={moduleSelection}
-          onChange={(e) => handleModuleChange(e.target.value)}
-          options={moduleOptions}
-        />
-
-        {/* Custom module fields */}
-        {moduleSelection === 'custom' && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input
-              label="Module Code"
-              placeholder="e.g. SC1003"
-              value={moduleCode}
-              onChange={(e) => setModuleCode(e.target.value)}
-              error={errors.moduleCode}
-            />
-            <Input
-              label="Module Name"
-              placeholder="e.g. Introduction to Programming"
-              value={moduleName}
-              onChange={(e) => setModuleName(e.target.value)}
-              error={errors.moduleName}
-            />
+        {isModuleLocked ? (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Module
+            </label>
+            <div className="px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+              <span className="font-medium text-gray-900 dark:text-white">{moduleCode}</span>
+              <span className="text-gray-500 dark:text-gray-400 ml-2">- {moduleName}</span>
+            </div>
           </div>
+        ) : (
+          <>
+            <Select
+              label="Module"
+              value={moduleSelection}
+              onChange={(e) => handleModuleChange(e.target.value)}
+              options={moduleOptions}
+            />
+
+            {/* Custom module fields */}
+            {moduleSelection === 'custom' && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Input
+                  label="Module Code"
+                  placeholder="e.g. SC1003"
+                  value={moduleCode}
+                  onChange={(e) => setModuleCode(e.target.value)}
+                  error={errors.moduleCode}
+                />
+                <Input
+                  label="Module Name"
+                  placeholder="e.g. Introduction to Programming"
+                  value={moduleName}
+                  onChange={(e) => setModuleName(e.target.value)}
+                  error={errors.moduleName}
+                />
+              </div>
+            )}
+          </>
         )}
 
         {/* Day */}
@@ -329,6 +397,65 @@ export function AddTimetableEntryModal({
           error={errors.venue}
         />
 
+        {/* Recurring / One-off Toggle */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Schedule Type
+          </label>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setRecurring(true)}
+              className={cn(
+                'flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all',
+                recurring
+                  ? 'bg-primary-600 text-white shadow-sm'
+                  : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+              )}
+            >
+              Weekly Recurring
+            </button>
+            <button
+              type="button"
+              onClick={() => setRecurring(false)}
+              className={cn(
+                'flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all',
+                !recurring
+                  ? 'bg-primary-600 text-white shadow-sm'
+                  : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+              )}
+            >
+              One-off Event
+            </button>
+          </div>
+        </div>
+
+        {/* Week Selection (recurring) or Date Picker (one-off) */}
+        {recurring ? (
+          <div>
+            <WeekSelector
+              selectedWeeks={selectedWeeks}
+              includeRecessWeek={includeRecessWeek}
+              onChange={handleWeeksChange}
+            />
+            {errors.weeks && (
+              <p className="mt-1.5 text-sm text-danger-500">{errors.weeks}</p>
+            )}
+          </div>
+        ) : (
+          <div>
+            <Input
+              label="Date"
+              type="date"
+              value={specificDate}
+              onChange={(e) => setSpecificDate(e.target.value)}
+              min={dateMin}
+              max={dateMax}
+              error={errors.date}
+            />
+          </div>
+        )}
+
         {/* Notes */}
         <Input
           label="Notes (optional)"
@@ -363,4 +490,11 @@ export function AddTimetableEntryModal({
 function timeToMinutes(time: string): number {
   const [h, m] = time.split(':').map(Number);
   return h * 60 + m;
+}
+
+function formatDateForInput(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 }
