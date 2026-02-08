@@ -1,4 +1,4 @@
-# NTU GPA Calculator
+# Academic Hub
 
 A desktop and web application built for Nanyang Technological University (NTU) students to track modules, calculate GPA, plan future courses, and monitor academic progress throughout their degree.
 

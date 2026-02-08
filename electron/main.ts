@@ -64,7 +64,7 @@ function createWindow() {
 function createMenu() {
   const template: Electron.MenuItemConstructorOptions[] = [
     {
-      label: 'NTU GPA Calculator',
+      label: 'Academic Hub',
       submenu: [
         { role: 'about' },
         { type: 'separator' },

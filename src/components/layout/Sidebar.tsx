@@ -1,6 +1,6 @@
 import { type ReactElement } from 'react';
 import { motion } from 'framer-motion';
-import { useStore } from '../../store';
+import { useStore, useUserProfile } from '../../store';
 import { cn } from '../../lib/utils';
 import type { ViewType } from '../../types';
 
@@ -112,10 +112,10 @@ export function Sidebar({ onClose }: SidebarProps) {
         <div className="flex items-center justify-between p-4 lg:hidden border-b border-gray-200 dark:border-gray-800">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center text-white font-bold text-sm">
-              G
+              A
             </div>
             <span className="font-semibold text-gray-900 dark:text-white">
-              GPA Calculator
+              Academic Hub
             </span>
           </div>
           <button
@@ -188,20 +188,30 @@ export function Sidebar({ onClose }: SidebarProps) {
         </div>
       </nav>
 
-      {/* Footer */}
-      <div className="p-4 border-t border-gray-200 dark:border-gray-800">
-        <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-800/50">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white text-sm font-medium">
-            U
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-              Student
-            </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-              NTU
-            </p>
-          </div>
+      {/* Footer - User Profile */}
+      <SidebarProfile />
+    </div>
+  );
+}
+
+function SidebarProfile() {
+  const profile = useUserProfile();
+
+  if (!profile.visible) return null;
+
+  return (
+    <div className="p-4 border-t border-gray-200 dark:border-gray-800">
+      <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-800/50">
+        <div className={cn('w-8 h-8 rounded-full bg-gradient-to-br flex items-center justify-center text-white text-sm font-medium', profile.avatarColor)}>
+          {profile.avatarInitial}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+            {profile.name}
+          </p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+            {profile.subtitle}
+          </p>
         </div>
       </div>
     </div>

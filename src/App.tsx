@@ -11,6 +11,13 @@ import { OnboardingFlow } from './components/onboarding';
 import { ModuleManagement } from './components/modules';
 import { CoursePlanner } from './components/planner';
 import { TimetableView } from './components/timetable';
+import { WeekTimetableWidget } from './components/dashboard/WeekTimetableWidget';
+import { UpcomingExamsWidget } from './components/dashboard/UpcomingExamsWidget';
+import { GPASparklineWidget } from './components/dashboard/GPASparklineWidget';
+import { SemesterProgressWidget } from './components/dashboard/SemesterProgressWidget';
+import { HonoursProgressWidget } from './components/dashboard/HonoursProgressWidget';
+import { QuickActionsWidget } from './components/dashboard/QuickActionsWidget';
+import { GradeDistributionWidget } from './components/dashboard/GradeDistributionWidget';
 import { calculateCompositeStats, getClassification } from './utils/gpa';
 import { cn } from './lib/utils';
 import type { ExportData, Module } from './types';
@@ -30,6 +37,9 @@ function DashboardView() {
   const currentViewModules = modules.filter(
     (m) => m.year === selectedYear && m.semester === selectedSem
   );
+  const currentSemAU = currentViewModules.reduce((sum, m) => sum + m.au, 0);
+  const completedCount = modules.filter(m => m.status === 'Completed').length;
+  const inProgressCount = modules.filter(m => m.status === 'In Progress').length;
 
   const stats = [
     {
@@ -52,9 +62,9 @@ function DashboardView() {
       color: 'success' as const,
     },
     {
-      label: 'Total AU Completed',
-      value: cumulativeStats.takenAU.toString(),
-      subValue: `${cumulativeStats.totalExistingAU} AU planned`,
+      label: 'AU Completed',
+      value: cumulativeStats.official.au.toString(),
+      subValue: `${cumulativeStats.totalExistingAU} AU total`,
       color: 'secondary' as const,
     },
     {
@@ -64,9 +74,9 @@ function DashboardView() {
       color: 'primary' as const,
     },
     {
-      label: 'Modules',
-      value: modules.length.toString(),
-      subValue: `${currentViewModules.length} in current semester`,
+      label: `Y${selectedYear}S${selectedSem} Modules`,
+      value: `${currentViewModules.length} (${currentSemAU} AU)`,
+      subValue: `${completedCount} completed, ${inProgressCount} in progress`,
       color: 'info' as const,
     },
   ];
@@ -147,8 +157,32 @@ function DashboardView() {
         ))}
       </div>
 
+      {/* Week Timetable & Upcoming Exams */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
+        <WeekTimetableWidget />
+        <UpcomingExamsWidget />
+      </div>
+
+      {/* GPA Insights Row */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <GPASparklineWidget />
+        <SemesterProgressWidget />
+        <HonoursProgressWidget />
+      </div>
+
+      {/* Grade Distribution */}
+      <div className="mb-8">
+        <GradeDistributionWidget />
+      </div>
+
+      {/* Quick Actions */}
+      <div className="mb-8">
+        <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-3">Quick Actions</p>
+        <QuickActionsWidget />
+      </div>
+
       {/* Current Semester Modules */}
-      <Card>
+      <Card className="mb-8">
         <CardHeader
           title={`Year ${selectedYear} Semester ${selectedSem} Modules`}
           subtitle={`${currentViewModules.length} modules, ${currentViewModules.reduce((sum, m) => sum + m.au, 0)} AU`}
@@ -232,14 +266,87 @@ function DashboardView() {
           </div>
         )}
       </Card>
+
+      {/* Completed Modules Overview */}
+      <CompletedModulesOverview modules={modules} />
     </div>
+  );
+}
+
+// Completed modules overview grouped by semester
+function CompletedModulesOverview({ modules }: { modules: Module[] }) {
+  const completedModules = modules.filter((m) => m.status === 'Completed');
+  const [expandedSem, setExpandedSem] = useState<string | null>(null);
+
+  if (completedModules.length === 0) return null;
+
+  // Group by year+semester
+  const grouped: Record<string, Module[]> = {};
+  completedModules.forEach((m) => {
+    const key = `Y${m.year}S${m.semester}`;
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push(m);
+  });
+
+  const semesters = Object.entries(grouped)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([label, mods]) => {
+      const stats = calculateCompositeStats(mods);
+      return { label, mods, gpa: stats.official.gpa, totalAU: mods.reduce((s, m) => s + m.au, 0) };
+    });
+
+  return (
+    <Card>
+      <CardHeader
+        title="Completed Modules Overview"
+        subtitle={`${completedModules.length} modules across ${semesters.length} semester${semesters.length !== 1 ? 's' : ''}`}
+      />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {semesters.map((sem) => (
+          <div key={sem.label}>
+            <button
+              onClick={() => setExpandedSem(expandedSem === sem.label ? null : sem.label)}
+              className={cn(
+                'w-full rounded-xl p-3 text-left transition-all border',
+                expandedSem === sem.label
+                  ? 'border-primary-200 bg-primary-50 dark:border-primary-800 dark:bg-primary-900/20'
+                  : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 hover:border-gray-300 dark:hover:border-gray-600'
+              )}
+            >
+              <div className="flex items-center justify-between mb-1">
+                <span className="font-semibold text-gray-900 dark:text-white text-sm">{sem.label}</span>
+                <Badge variant="default" size="sm">{sem.mods.length} mods</Badge>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-lg font-bold text-primary-600 dark:text-primary-400">{sem.gpa.toFixed(2)}</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">{sem.totalAU} AU</span>
+              </div>
+            </button>
+            {expandedSem === sem.label && (
+              <div className="mt-1 space-y-1 px-1">
+                {sem.mods.map((m) => (
+                  <div key={m.id} className="flex items-center justify-between text-xs py-1 px-2 rounded-lg bg-white dark:bg-gray-900/30">
+                    <span className="text-gray-600 dark:text-gray-400 truncate mr-2">
+                      <span className="font-medium text-gray-900 dark:text-white">{m.code}</span> {m.name}
+                    </span>
+                    <span className="font-semibold text-gray-900 dark:text-white whitespace-nowrap">
+                      {m.grade || '-'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </Card>
   );
 }
 
 // Settings view with export/import, target AU, and theme
 function SettingsView() {
   const { theme, setTheme } = useTheme();
-  const { targetAU, setTargetAU, exportData, importData, resetData, modules, timetables, plannedModules } = useStore();
+  const { targetAU, setTargetAU, exportData, importData, resetData, modules, timetables, plannedModules, userProfile, setUserProfile } = useStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importStatus, setImportStatus] = useState<string | null>(null);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
@@ -357,6 +464,93 @@ function SettingsView() {
           </div>
         </Card>
 
+        {/* Profile Settings */}
+        <Card>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Profile Settings</h3>
+          <div className="space-y-4">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={userProfile.visible}
+                onChange={(e) => setUserProfile({ visible: e.target.checked })}
+                className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500"
+              />
+              <span className="text-sm text-gray-700 dark:text-gray-300">Show profile in sidebar</span>
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name</label>
+                <input
+                  type="text"
+                  value={userProfile.name}
+                  onChange={(e) => setUserProfile({ name: e.target.value })}
+                  maxLength={30}
+                  className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Subtitle</label>
+                <input
+                  type="text"
+                  value={userProfile.subtitle}
+                  onChange={(e) => setUserProfile({ subtitle: e.target.value })}
+                  maxLength={30}
+                  className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Avatar Initial</label>
+                <input
+                  type="text"
+                  value={userProfile.avatarInitial}
+                  onChange={(e) => setUserProfile({ avatarInitial: e.target.value.slice(0, 2) })}
+                  maxLength={2}
+                  className="w-20 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-center"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Avatar Color</label>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { label: 'Blue', value: 'from-primary-400 to-primary-600' },
+                    { label: 'Green', value: 'from-green-400 to-green-600' },
+                    { label: 'Purple', value: 'from-purple-400 to-purple-600' },
+                    { label: 'Pink', value: 'from-pink-400 to-pink-600' },
+                    { label: 'Orange', value: 'from-orange-400 to-orange-600' },
+                    { label: 'Teal', value: 'from-teal-400 to-teal-600' },
+                  ].map((color) => (
+                    <button
+                      key={color.value}
+                      onClick={() => setUserProfile({ avatarColor: color.value })}
+                      className={cn(
+                        'w-8 h-8 rounded-full bg-gradient-to-br transition-all',
+                        color.value,
+                        userProfile.avatarColor === color.value
+                          ? 'ring-2 ring-primary-500 ring-offset-2 dark:ring-offset-gray-900 scale-110'
+                          : 'hover:scale-105'
+                      )}
+                      title={color.label}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+            {/* Preview */}
+            <div className="pt-3 border-t border-gray-100 dark:border-gray-700">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Preview</p>
+              <div className="inline-flex items-center gap-3 px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-800/50">
+                <div className={cn('w-8 h-8 rounded-full bg-gradient-to-br flex items-center justify-center text-white text-sm font-medium', userProfile.avatarColor)}>
+                  {userProfile.avatarInitial}
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">{userProfile.name}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{userProfile.subtitle}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Card>
+
         {/* Data Management */}
         <Card>
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Data Management</h3>
@@ -419,7 +613,7 @@ function SettingsView() {
         <Card>
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">About</h3>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            NTU GPA Calculator v2.0 — Track your academic progress, plan courses, and manage your timetable.
+            Academic Hub v2.0 — Track your academic progress, plan courses, and manage your timetable.
           </p>
         </Card>
       </div>
