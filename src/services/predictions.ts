@@ -1,5 +1,5 @@
 import type { Module, Grade, WhatIfScenario, GradeRequirement } from '../types';
-import { calculateCompositeStats, GRADE_POINTS, EXCLUDED_GRADES } from '../utils/gpa';
+import { calculateCompositeStats, GRADE_POINTS, EXCLUDED_GRADES, getProjectedGrade } from '../utils/gpa';
 import { generateId } from '../lib/utils';
 
 /**
@@ -37,8 +37,9 @@ export function calculateRequiredGrade(
   }
 
   // Calculate impact
-  const currentGradePoints = module.grade && GRADE_POINTS[module.grade] !== undefined
-    ? GRADE_POINTS[module.grade]
+  const effectiveGrade = getProjectedGrade(module);
+  const currentGradePoints = effectiveGrade && GRADE_POINTS[effectiveGrade] !== undefined
+    ? GRADE_POINTS[effectiveGrade]
     : 0;
   const requiredGradePoints = GRADE_POINTS[requiredGrade] ?? 5.0;
   const impact = (requiredGradePoints - currentGradePoints) * module.au;
@@ -47,7 +48,7 @@ export function calculateRequiredGrade(
     moduleId,
     moduleCode: module.code,
     requiredGrade,
-    currentGrade: module.grade,
+    currentGrade: (effectiveGrade ?? module.grade) as Grade | null,
     impact: parseFloat(impact.toFixed(2)),
   };
 }
@@ -238,7 +239,7 @@ export function suggestOptimalGrades(
       suggestions.push({
         moduleId: module.id,
         moduleCode: module.code,
-        currentGrade: module.grade,
+        currentGrade: (getProjectedGrade(module) ?? module.grade) as Grade | null,
         suggestedGrade: requirement.requiredGrade,
         impact: requirement.impact,
       });

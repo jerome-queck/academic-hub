@@ -1,13 +1,8 @@
 import { useState, useMemo } from 'react';
-import { motion } from 'framer-motion';
 import { useStore } from '../../store';
 import { Card, CardHeader, Slider, Badge } from '../ui';
 import { cn } from '../../lib/utils';
-import {
-  projectGraduationGPA,
-  suggestOptimalGrades,
-} from '../../services/predictions';
-import { GRADE_POINTS } from '../../utils/gpa';
+import { projectGraduationGPA } from '../../services/predictions';
 
 export function RequiredGradeCalculator() {
   const { modules, goals } = useStore();
@@ -15,11 +10,6 @@ export function RequiredGradeCalculator() {
 
   const projection = useMemo(
     () => projectGraduationGPA(modules, targetGPA),
-    [modules, targetGPA]
-  );
-
-  const suggestions = useMemo(
-    () => suggestOptimalGrades(modules, targetGPA).slice(0, 5),
     [modules, targetGPA]
   );
 
@@ -138,85 +128,6 @@ export function RequiredGradeCalculator() {
         )}
       </div>
 
-      {/* Grade Suggestions */}
-      {suggestions.length > 0 && (
-        <div>
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
-            Suggested Focus Areas
-          </h3>
-          <div className="space-y-2">
-            {suggestions.map((suggestion, index) => (
-              <motion.div
-                key={suggestion.moduleId}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.1 }}
-                className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700"
-              >
-                <div className="flex-1">
-                  <p className="font-medium text-gray-900 dark:text-white">
-                    {suggestion.moduleCode}
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="default" size="sm">
-                      {suggestion.currentGrade || '-'}
-                    </Badge>
-                    <svg
-                      className="w-4 h-4 text-gray-400"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M13 7l5 5m0 0l-5 5m5-5H6"
-                      />
-                    </svg>
-                    <Badge
-                      variant={
-                        (suggestion.suggestedGrade && GRADE_POINTS[suggestion.suggestedGrade] >= 4.5)
-                          ? 'success'
-                          : (suggestion.suggestedGrade && GRADE_POINTS[suggestion.suggestedGrade] >= 3.5)
-                          ? 'primary'
-                          : 'warning'
-                      }
-                      size="sm"
-                    >
-                      {suggestion.suggestedGrade ?? '-'}
-                    </Badge>
-                  </div>
-
-                  <span
-                    className={cn(
-                      'text-sm font-semibold w-16 text-right',
-                      suggestion.impact > 0
-                        ? 'text-success-600'
-                        : 'text-gray-500'
-                    )}
-                  >
-                    {suggestion.impact > 0 ? '+' : ''}
-                    {suggestion.impact.toFixed(2)}
-                  </span>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {suggestions.length === 0 && (
-        <div className="text-center py-6 text-gray-500 dark:text-gray-400">
-          <p>No improvement suggestions available</p>
-          <p className="text-sm mt-1">
-            Add modules to get personalized recommendations
-          </p>
-        </div>
-      )}
     </Card>
   );
 }
