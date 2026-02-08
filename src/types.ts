@@ -1,7 +1,12 @@
 // Grade types
-export type Grade = 'A+' | 'A' | 'A-' | 'B+' | 'B' | 'B-' | 'C+' | 'C' | 'D+' | 'D' | 'F' | 'S' | 'U' | 'P' | 'Pass' | 'Fail' | 'EX' | 'TC' | 'IP' | 'LOA' | null;
+export type Grade = 'A+' | 'A' | 'A-' | 'B+' | 'B' | 'B-' | 'C+' | 'C' | 'D+' | 'D' | 'F' | 'S' | 'U' | 'P' | 'Fail' | 'EX' | 'TC' | 'IP' | 'LOA' | null;
 
 export type ModuleType = 'Core' | 'BDE' | 'ICC-Core' | 'ICC-Professional Series' | 'ICC-CSL' | 'FYP' | 'Mathematics PE' | 'Physics PE' | 'UE' | 'Other';
+
+export const MODULE_TYPES: ModuleType[] = [
+  'Core', 'BDE', 'ICC-Core', 'ICC-Professional Series', 'ICC-CSL',
+  'FYP', 'Mathematics PE', 'Physics PE', 'UE', 'Other',
+];
 
 export type ModuleStatus = 'Not Started' | 'In Progress' | 'Completed';
 
@@ -18,7 +23,7 @@ export interface Module {
   semester: number; // 1 or 2
   prerequisiteCodes: string[];
   // Extended fields
-  expectedGrade?: Grade; // For predictions
+  projectedGrade?: Grade | null; // For projected GPA (non-completed modules)
   notes?: string;
   tags?: string[];
   createdAt?: string;
@@ -95,8 +100,10 @@ export interface GradeRequirement {
 }
 
 // Timetable Types
-export type DayOfWeek = 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday';
+export type DayOfWeek = 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday';
 export type ClassType = 'Lecture' | 'Tutorial' | 'Lab' | 'Seminar' | 'Other';
+export type ExamType = 'Midterm' | 'Final' | 'Quiz' | 'Other';
+export type WeekType = 'teaching' | 'recess' | 'exam';
 
 export interface TimetableEntry {
   id: string;
@@ -109,12 +116,70 @@ export interface TimetableEntry {
   classType: ClassType;
   color?: string;
   notes?: string;
+  // Recurrence fields
+  recurring: boolean;            // true = weekly recurring, false = one-off event
+  weeks?: number[];              // which teaching weeks (1–13) this recurs on; undefined = all 13
+  includeRecessWeek?: boolean;   // whether to also occur during recess week (default false)
+  specificDate?: string;         // ISO date for one-off events (only used when recurring = false)
+}
+
+export interface Examination {
+  id: string;
+  moduleCode: string;
+  moduleName: string;
+  examType: ExamType;
+  date: string;        // ISO date "YYYY-MM-DD"
+  startTime: string;   // "HH:MM" format
+  endTime: string;     // "HH:MM" format
+  duration: number;    // duration in minutes
+  venue: string;
+  notes?: string;
+  color?: string;
+}
+
+export interface AcademicCalendar {
+  year: number;        // 1–4
+  semester: number;    // 1–2
+  startDate: string;   // ISO date of Week 1 Monday
+  endDate?: string;    // ISO date of last day of exam period (auto-calculated if unset)
+}
+
+export interface AcademicWeek {
+  weekNumber: number;    // 1–18 sequentially
+  displayLabel: string;  // "Week 1", "Recess Week", "Exam Week 1", etc.
+  weekType: WeekType;
+  startDate: Date;
+  endDate: Date;         // Sunday of that week
 }
 
 export interface Timetable {
   year: number;
   semester: number;
   entries: TimetableEntry[];
+  examinations: Examination[];
+  calendar?: AcademicCalendar;   // per-semester override; if absent, use defaults
+}
+
+// Workload Thresholds (customizable AU zones for analytics)
+export interface WorkloadThresholds {
+  idealMin: number;   // default 15
+  idealMax: number;   // default 18
+  warningMax: number; // default 21 — above this is "overload/red"
+}
+
+// Module type AU requirements for graduation readiness
+export type ModuleTypeRequirements = Partial<Record<ModuleType, number>>;
+
+// Dean's List manual overrides per year (true = confirmed, false = denied, absent = auto-detect)
+export type DeanListOverrides = Record<number, boolean>;
+
+// User profile for sidebar display
+export interface UserProfile {
+  visible: boolean;
+  name: string;
+  subtitle: string;
+  avatarInitial: string;
+  avatarColor: string; // gradient classes e.g. "from-primary-400 to-primary-600"
 }
 
 // Course Planner Types
@@ -139,6 +204,10 @@ export interface ExportData {
   plannedModules: PlannedModule[];
   targetAU: number;
   snapshots: AnalyticsSnapshot[];
+  workloadThresholds?: WorkloadThresholds;
+  moduleTypeRequirements?: ModuleTypeRequirements;
+  deanListOverrides?: DeanListOverrides;
+  userProfile?: UserProfile;
 }
 
 // View/Navigation Types

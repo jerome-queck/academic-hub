@@ -14,23 +14,23 @@ export const GRADE_POINTS: Record<string, number> = {
   'F': 0.0,
 };
 
-export const EXCLUDED_GRADES = ['S', 'U', 'P', 'Fail', 'EX', 'TC', 'IP', 'LOA'];
+export const EXCLUDED_GRADES = ['S', 'U', 'P', 'Pass', 'Fail', 'EX', 'TC', 'IP', 'LOA'];
 
-// Logic helpers
-const hasValidGrade = (m: Module) => {
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
-  return m.grade !== null && m.grade !== '' && !EXCLUDED_GRADES.includes(m.grade as string);
+// Get the effective grade for projected GPA: actual grade for completed, projectedGrade for others
+export const getProjectedGrade = (m: Module): string | null => {
+  if (m.status === 'Completed') return m.grade;
+  return m.projectedGrade ?? null;
 };
 
 // Calculate Points and AU for a given set of modules
-const calculateRawStats = (modules: Module[]) => {
+const calculateRawStats = (modules: Module[], gradeResolver?: (m: Module) => string | null) => {
   let points = 0;
   let au = 0;
 
   modules.forEach(m => {
-    if (hasValidGrade(m) && m.grade && GRADE_POINTS[m.grade] !== undefined) {
-      points += GRADE_POINTS[m.grade] * m.au;
+    const grade = gradeResolver ? gradeResolver(m) : m.grade;
+    if (grade && grade !== '' && !EXCLUDED_GRADES.includes(grade) && GRADE_POINTS[grade] !== undefined) {
+      points += GRADE_POINTS[grade] * m.au;
       au += m.au;
     }
   });
@@ -53,13 +53,12 @@ export const calculateCompositeStats = (modules: Module[], filterYear?: number, 
   // Official: Status 'Completed'
   const officialModules = scopeModules.filter(m => m.status === 'Completed');
   
-  // Projected: 
-  // - Completed 
-  // - OR In Progress (with Grade) 
-  // - OR Not Started (with Grade) - NEW REQUIREMENT
-  const projectedModules = scopeModules.filter(m => 
-    m.status === 'Completed' || 
-    ((m.status === 'In Progress' || m.status === 'Not Started') && m.grade)
+  // Projected:
+  // - Completed (uses actual grade)
+  // - OR In Progress / Not Started (with projectedGrade)
+  const projectedModules = scopeModules.filter(m =>
+    m.status === 'Completed' ||
+    ((m.status === 'In Progress' || m.status === 'Not Started') && m.projectedGrade)
   );
 
   // Taken Load: Completed + In Progress
@@ -69,7 +68,7 @@ export const calculateCompositeStats = (modules: Module[], filterYear?: number, 
 
   // 3. Calculate GPAs
   const officialRaw = calculateRawStats(officialModules);
-  const projectedRaw = calculateRawStats(projectedModules);
+  const projectedRaw = calculateRawStats(projectedModules, getProjectedGrade);
 
   // 4. Calculate AU Totals
   const takenAU = takenModules.reduce((sum, m) => sum + m.au, 0);

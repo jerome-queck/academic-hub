@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
-import type { Module, GoalSettings, AnalyticsSnapshot, ViewType, LegacyAppState, Timetable, TimetableEntry, PlannedModule, ExportData } from '../types';
+import type { Module, GoalSettings, AnalyticsSnapshot, ViewType, LegacyAppState, Timetable, TimetableEntry, PlannedModule, ExportData, Examination, AcademicCalendar, WorkloadThresholds, ModuleTypeRequirements, DeanListOverrides, UserProfile } from '../types';
 import { generateId } from '../lib/utils';
 
 interface AppState {
@@ -22,6 +22,14 @@ interface AppState {
 
   // Course Planner
   plannedModules: PlannedModule[];
+
+  // Workload & Graduation Settings
+  workloadThresholds: WorkloadThresholds;
+  moduleTypeRequirements: ModuleTypeRequirements;
+  deanListOverrides: DeanListOverrides;
+
+  // User Profile
+  userProfile: UserProfile;
 
   // UI State
   selectedYear: number;
@@ -55,12 +63,28 @@ interface AppState {
   updateTimetableEntry: (year: number, semester: number, entryId: string, updates: Partial<TimetableEntry>) => void;
   deleteTimetableEntry: (year: number, semester: number, entryId: string) => void;
 
+  // Actions - Examinations
+  addExamination: (year: number, semester: number, exam: Examination) => void;
+  updateExamination: (year: number, semester: number, examId: string, updates: Partial<Examination>) => void;
+  deleteExamination: (year: number, semester: number, examId: string) => void;
+
+  // Actions - Academic Calendar
+  setAcademicCalendar: (year: number, semester: number, calendar: AcademicCalendar) => void;
+
   // Actions - Course Planner
   addPlannedModule: (module: PlannedModule) => void;
   updatePlannedModule: (id: string, updates: Partial<PlannedModule>) => void;
   deletePlannedModule: (id: string) => void;
   setPlannedModules: (modules: PlannedModule[]) => void;
   batchAddPlannedToModules: (ids: string[]) => void;
+
+  // Actions - Workload & Graduation
+  setWorkloadThresholds: (thresholds: Partial<WorkloadThresholds>) => void;
+  setModuleTypeRequirements: (reqs: ModuleTypeRequirements) => void;
+  setDeanListOverride: (year: number, value: boolean | undefined) => void;
+
+  // Actions - User Profile
+  setUserProfile: (profile: Partial<UserProfile>) => void;
 
   // Actions - Data Management
   exportData: () => ExportData;
@@ -83,6 +107,20 @@ const defaultGoals: GoalSettings = {
   semesterGoals: {},
   notifications: true,
   warningThreshold: 10,
+};
+
+const defaultWorkloadThresholds: WorkloadThresholds = {
+  idealMin: 15,
+  idealMax: 18,
+  warningMax: 21,
+};
+
+const defaultUserProfile: UserProfile = {
+  visible: true,
+  name: 'Student',
+  subtitle: 'NTU',
+  avatarInitial: 'U',
+  avatarColor: 'from-primary-400 to-primary-600',
 };
 
 // Migrate from old localStorage format
@@ -115,6 +153,10 @@ export const useStore = create<AppState>()(
       targetAU: 130,
       timetables: [],
       plannedModules: [],
+      workloadThresholds: defaultWorkloadThresholds,
+      moduleTypeRequirements: {} as ModuleTypeRequirements,
+      deanListOverrides: {} as DeanListOverrides,
+      userProfile: defaultUserProfile,
       selectedYear: 1,
       selectedSem: 1,
       sidebarOpen: true,
@@ -186,13 +228,13 @@ export const useStore = create<AppState>()(
       getTimetable: (year, semester) => {
         const state = get();
         const existing = state.timetables.find(t => t.year === year && t.semester === semester);
-        return existing || { year, semester, entries: [] };
+        return existing || { year, semester, entries: [], examinations: [] };
       },
 
       addTimetableEntry: (year, semester, entry) => set((state) => {
         let timetable = state.timetables.find(t => t.year === year && t.semester === semester);
         if (!timetable) {
-          state.timetables.push({ year, semester, entries: [] });
+          state.timetables.push({ year, semester, entries: [], examinations: [] });
           timetable = state.timetables[state.timetables.length - 1];
         }
         timetable.entries.push(entry);
@@ -213,6 +255,44 @@ export const useStore = create<AppState>()(
         if (timetable) {
           timetable.entries = timetable.entries.filter(e => e.id !== entryId);
         }
+      }),
+
+      // Examination actions
+      addExamination: (year, semester, exam) => set((state) => {
+        let timetable = state.timetables.find(t => t.year === year && t.semester === semester);
+        if (!timetable) {
+          state.timetables.push({ year, semester, entries: [], examinations: [] });
+          timetable = state.timetables[state.timetables.length - 1];
+        }
+        if (!timetable.examinations) timetable.examinations = [];
+        timetable.examinations.push(exam);
+      }),
+
+      updateExamination: (year, semester, examId, updates) => set((state) => {
+        const timetable = state.timetables.find(t => t.year === year && t.semester === semester);
+        if (timetable?.examinations) {
+          const idx = timetable.examinations.findIndex(e => e.id === examId);
+          if (idx !== -1) {
+            Object.assign(timetable.examinations[idx], updates);
+          }
+        }
+      }),
+
+      deleteExamination: (year, semester, examId) => set((state) => {
+        const timetable = state.timetables.find(t => t.year === year && t.semester === semester);
+        if (timetable?.examinations) {
+          timetable.examinations = timetable.examinations.filter(e => e.id !== examId);
+        }
+      }),
+
+      // Academic Calendar actions
+      setAcademicCalendar: (year, semester, calendar) => set((state) => {
+        let timetable = state.timetables.find(t => t.year === year && t.semester === semester);
+        if (!timetable) {
+          state.timetables.push({ year, semester, entries: [], examinations: [], calendar });
+          return;
+        }
+        timetable.calendar = calendar;
       }),
 
       // Course planner actions
@@ -253,6 +333,7 @@ export const useStore = create<AppState>()(
               semester: pm.semester,
               prerequisiteCodes: pm.prerequisiteCodes,
               grade: null,
+              projectedGrade: null,
               status: 'Not Started',
               createdAt: now,
               updatedAt: now,
@@ -263,11 +344,33 @@ export const useStore = create<AppState>()(
         state.plannedModules = state.plannedModules.filter(pm => !idSet.has(pm.id));
       }),
 
+      // Workload & Graduation actions
+      setWorkloadThresholds: (thresholds) => set((state) => {
+        Object.assign(state.workloadThresholds, thresholds);
+      }),
+
+      setModuleTypeRequirements: (reqs) => set((state) => {
+        state.moduleTypeRequirements = reqs;
+      }),
+
+      setDeanListOverride: (year, value) => set((state) => {
+        if (value === undefined) {
+          delete state.deanListOverrides[year];
+        } else {
+          state.deanListOverrides[year] = value;
+        }
+      }),
+
+      // User Profile actions
+      setUserProfile: (profile) => set((state) => {
+        Object.assign(state.userProfile, profile);
+      }),
+
       // Data management
       exportData: () => {
         const state = get();
         return {
-          version: 3,
+          version: 6,
           exportDate: new Date().toISOString(),
           modules: state.modules,
           goals: state.goals,
@@ -275,6 +378,10 @@ export const useStore = create<AppState>()(
           plannedModules: state.plannedModules,
           targetAU: state.targetAU,
           snapshots: state.snapshots,
+          workloadThresholds: state.workloadThresholds,
+          moduleTypeRequirements: state.moduleTypeRequirements,
+          deanListOverrides: state.deanListOverrides,
+          userProfile: state.userProfile,
         };
       },
 
@@ -285,6 +392,10 @@ export const useStore = create<AppState>()(
         if (data.plannedModules) state.plannedModules = data.plannedModules;
         if (data.targetAU) state.targetAU = data.targetAU;
         if (data.snapshots) state.snapshots = data.snapshots;
+        if (data.workloadThresholds) state.workloadThresholds = data.workloadThresholds;
+        if (data.moduleTypeRequirements) state.moduleTypeRequirements = data.moduleTypeRequirements;
+        if (data.deanListOverrides) state.deanListOverrides = data.deanListOverrides;
+        if (data.userProfile) state.userProfile = data.userProfile;
       }),
 
       resetData: () => set((state) => {
@@ -294,6 +405,10 @@ export const useStore = create<AppState>()(
         state.targetAU = 130;
         state.timetables = [];
         state.plannedModules = [];
+        state.workloadThresholds = defaultWorkloadThresholds;
+        state.moduleTypeRequirements = {} as ModuleTypeRequirements;
+        state.deanListOverrides = {} as DeanListOverrides;
+        state.userProfile = defaultUserProfile;
         state.selectedYear = 1;
         state.selectedSem = 1;
         state.currentView = 'dashboard';
@@ -324,7 +439,7 @@ export const useStore = create<AppState>()(
     })),
     {
       name: 'ntu-gpa-storage',
-      version: 3,
+      version: 6,
       storage: createJSONStorage(() => localStorage),
       migrate: (persisted, version) => {
         if (version === 0 || version === 1 || !persisted) {
@@ -354,6 +469,44 @@ export const useStore = create<AppState>()(
             plannedModules: [],
           } as unknown as AppState;
         }
+        if (version === 3) {
+          // Migrate v3 → v4: add recurrence fields to entries, add examinations array
+          const currentState = persisted as Partial<AppState>;
+          return {
+            ...currentState,
+            timetables: (currentState.timetables || []).map((tt: Timetable) => ({
+              ...tt,
+              examinations: [],
+              entries: tt.entries.map((e: TimetableEntry) => ({
+                ...e,
+                recurring: true,       // existing entries assumed to be recurring
+                // weeks: undefined means all 13 teaching weeks
+              })),
+            })),
+          } as unknown as AppState;
+        }
+        if (version === 4) {
+          // Migrate v4 → v5: add workload thresholds, module type requirements, dean list overrides, user profile
+          const currentState = persisted as Partial<AppState>;
+          return {
+            ...currentState,
+            workloadThresholds: defaultWorkloadThresholds,
+            moduleTypeRequirements: {},
+            deanListOverrides: {},
+            userProfile: defaultUserProfile,
+          } as unknown as AppState;
+        }
+        if (version === 5) {
+          // Migrate v5 → v6: add projectedGrade field to modules
+          const currentState = persisted as Partial<AppState>;
+          return {
+            ...currentState,
+            modules: (currentState.modules || []).map((m: Module) => ({
+              ...m,
+              projectedGrade: m.status !== 'Completed' && m.grade ? m.grade : null,
+            })),
+          } as unknown as AppState;
+        }
         return persisted as unknown as AppState;
       },
       partialize: (state) => ({
@@ -363,6 +516,10 @@ export const useStore = create<AppState>()(
         targetAU: state.targetAU,
         timetables: state.timetables,
         plannedModules: state.plannedModules,
+        workloadThresholds: state.workloadThresholds,
+        moduleTypeRequirements: state.moduleTypeRequirements,
+        deanListOverrides: state.deanListOverrides,
+        userProfile: state.userProfile,
         selectedYear: state.selectedYear,
         selectedSem: state.selectedSem,
         sidebarOpen: state.sidebarOpen,
@@ -390,7 +547,24 @@ export const useIncompleteModules = () =>
 export const useTimetable = (year: number, semester: number) =>
   useStore((state) => {
     const tt = state.timetables.find(t => t.year === year && t.semester === semester);
-    return tt || { year, semester, entries: [] };
+    return tt || { year, semester, entries: [], examinations: [] };
+  });
+
+export const useExaminations = (year: number, semester: number) =>
+  useStore((state) => {
+    const tt = state.timetables.find(t => t.year === year && t.semester === semester);
+    return tt?.examinations || [];
+  });
+
+export const useAcademicCalendar = (year: number, semester: number) =>
+  useStore((state) => {
+    const tt = state.timetables.find(t => t.year === year && t.semester === semester);
+    return tt?.calendar || null;
   });
 
 export const usePlannedModules = () => useStore((state) => state.plannedModules);
+
+export const useWorkloadThresholds = () => useStore((state) => state.workloadThresholds);
+export const useModuleTypeRequirements = () => useStore((state) => state.moduleTypeRequirements);
+export const useDeanListOverrides = () => useStore((state) => state.deanListOverrides);
+export const useUserProfile = () => useStore((state) => state.userProfile);

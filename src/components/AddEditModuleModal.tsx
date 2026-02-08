@@ -4,6 +4,7 @@ import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { Select } from './ui/Select';
 import { Badge } from './ui/Badge';
+import { MODULE_TYPES } from '../types';
 import type { Module, ModuleType, ModuleStatus, Grade } from '../types';
 import { createModule, resolvePrerequisites } from '../services/modules';
 import { v4 as uuidv4 } from 'uuid';
@@ -18,7 +19,6 @@ interface Props {
   defaultSem?: number;
 }
 
-const MODULE_TYPES: ModuleType[] = ['Core', 'BDE', 'ICC-Core', 'ICC-Professional Series', 'ICC-CSL', 'FYP', 'Mathematics PE', 'Physics PE'];
 const GRADES: Grade[] = ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'D+', 'D', 'F', 'S', 'U', 'P', 'Fail', 'EX', 'TC', 'IP', 'LOA'];
 
 const AddEditModuleModal: React.FC<Props> = ({
@@ -36,6 +36,7 @@ const AddEditModuleModal: React.FC<Props> = ({
   const [type, setType] = useState<ModuleType>('Core');
   const [status, setStatus] = useState<ModuleStatus>('Not Started');
   const [grade, setGrade] = useState<Grade | ''>('');
+  const [projectedGrade, setProjectedGrade] = useState<Grade | ''>('');
   const [year, setYear] = useState(1);
   const [semester, setSemester] = useState(1);
   const [prereqInput, setPrereqInput] = useState('');
@@ -49,6 +50,7 @@ const AddEditModuleModal: React.FC<Props> = ({
       setType(moduleToEdit.type);
       setStatus(moduleToEdit.status);
       setGrade(moduleToEdit.grade || '');
+      setProjectedGrade(moduleToEdit.projectedGrade || '');
       setYear(moduleToEdit.year || 1);
       setSemester(moduleToEdit.semester || 1);
       setCurrentPrereqs(moduleToEdit.prerequisiteCodes || []);
@@ -64,6 +66,7 @@ const AddEditModuleModal: React.FC<Props> = ({
     setType('Core');
     setStatus('Not Started');
     setGrade('');
+    setProjectedGrade('');
     setYear(defaultYear);
     setSemester(defaultSem);
     setCurrentPrereqs([]);
@@ -91,6 +94,7 @@ const AddEditModuleModal: React.FC<Props> = ({
         type,
         status,
         grade: grade === '' ? null : (grade as Grade),
+        projectedGrade: projectedGrade === '' ? null : (projectedGrade as Grade),
         year: Number(year),
         semester: Number(semester),
         prerequisiteCodes: currentPrereqs
@@ -98,6 +102,7 @@ const AddEditModuleModal: React.FC<Props> = ({
     } else {
       finalModule = createModule(code, name, Number(au), type, Number(year), Number(semester), status);
       finalModule.grade = grade === '' ? null : (grade as Grade);
+      finalModule.projectedGrade = projectedGrade === '' ? null : (projectedGrade as Grade);
       finalModule.prerequisiteCodes = currentPrereqs;
     }
 
@@ -182,18 +187,32 @@ const AddEditModuleModal: React.FC<Props> = ({
           />
         </div>
 
-        {/* Row 3: Grade + Year + Semester */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Row 3: Grade + Projected Grade + Year + Semester */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Select
-            label="Grade (Optional)"
+            label="Grade (Actual)"
             value={grade || ''}
             onChange={e => setGrade(e.target.value as Grade)}
           >
             <option value="">— None —</option>
             {GRADES.map(g => (
-              <option key={g || 'null'} value={g || ''}>{g}</option>
+              <option key={g || 'null'} value={g || ''}>{g === 'P' ? 'Pass' : g}</option>
             ))}
           </Select>
+          {status !== 'Completed' && (
+            <Select
+              label="Projected Grade"
+              value={projectedGrade || ''}
+              onChange={e => setProjectedGrade(e.target.value as Grade)}
+            >
+              <option value="">— None —</option>
+              {GRADES.map(g => (
+                <option key={g || 'null'} value={g || ''}>{g === 'P' ? 'Pass' : g}</option>
+              ))}
+            </Select>
+          )}
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Select
             label="Year"
             value={year}

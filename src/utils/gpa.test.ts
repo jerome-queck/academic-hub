@@ -57,7 +57,8 @@ const mockModules: Module[] = [
     code: 'MOD5',
     name: 'Module 5',
     au: 3,
-    grade: 'A', // Target Grade
+    grade: null,
+    projectedGrade: 'A', // Projected Grade for In Progress
     type: 'Core',
     status: 'In Progress', // Should affect Projected but not Official
     year: 2,
@@ -70,6 +71,7 @@ const mockModules: Module[] = [
     name: 'Module 6',
     au: 2,
     grade: null,
+    projectedGrade: null,
     type: 'Core',
     status: 'Not Started',
     year: 2,
@@ -81,7 +83,8 @@ const mockModules: Module[] = [
     code: 'MOD7',
     name: 'Module 7',
     au: 3,
-    grade: 'A', // Target Grade for Not Started
+    grade: null,
+    projectedGrade: 'A', // Projected Grade for Not Started
     type: 'Core',
     status: 'Not Started',
     year: 2,

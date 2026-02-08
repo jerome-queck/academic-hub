@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback } from 'react';
+import { useState, useMemo, useRef, useCallback, Fragment } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useStore } from '../../store';
 import { PageHeader } from '../layout';
@@ -6,8 +6,10 @@ import { Card, Badge, Button, InlineSelect, Modal } from '../ui';
 import { calculateCompositeStats } from '../../utils/gpa';
 import { cn, generateId } from '../../lib/utils';
 import { EditableCell } from './EditableCell';
+import { ModuleTimetableSection } from '../timetable/ModuleTimetableSection';
 import { useUndoRedo } from '../../hooks/useUndoRedo';
 import { useTableKeyboard } from '../../hooks/useTableKeyboard';
+import { MODULE_TYPES } from '../../types';
 import type { Module, ModuleType, ModuleStatus, Grade } from '../../types';
 import type { SelectOption } from '../ui';
 
@@ -20,13 +22,13 @@ interface ModuleManagementProps {
   onAddModule: () => void;
 }
 
-// Grade options for select dropdowns
+// Grade options for select dropdowns — display 'P' as 'Pass'
+const GRADE_DISPLAY: Record<string, string> = { P: 'Pass' };
 const GRADE_OPTIONS: SelectOption[] = [
   { value: '', label: '—' },
-  ...['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'D+', 'D', 'F', 'S', 'U', 'P', 'Fail', 'EX', 'TC', 'IP', 'LOA'].map(g => ({ value: g, label: g })),
+  ...['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'D+', 'D', 'F', 'S', 'U', 'P', 'Fail', 'EX', 'TC', 'IP', 'LOA']
+    .map(g => ({ value: g, label: GRADE_DISPLAY[g] ?? g })),
 ];
-
-const MODULE_TYPES: ModuleType[] = ['Core', 'BDE', 'ICC-Core', 'ICC-Professional Series', 'ICC-CSL', 'FYP', 'Mathematics PE', 'Physics PE', 'UE', 'Other'];
 const MODULE_STATUSES: ModuleStatus[] = ['Not Started', 'In Progress', 'Completed'];
 
 const TYPE_OPTIONS: SelectOption[] = MODULE_TYPES.map(t => ({ value: t, label: t }));
@@ -53,7 +55,7 @@ const QUICK_FILTERS = [
 ] as const;
 
 // All possible columns
-type ColumnId = 'code' | 'name' | 'au' | 'type' | 'year' | 'status' | 'grade' | 'notes' | 'tags';
+type ColumnId = 'code' | 'name' | 'au' | 'type' | 'year' | 'status' | 'grade' | 'projectedGrade' | 'notes' | 'tags';
 const ALL_COLUMNS: { id: ColumnId; label: string; sortField?: SortField; align?: string; defaultVisible: boolean }[] = [
   { id: 'code', label: 'Code', sortField: 'code', defaultVisible: true },
   { id: 'name', label: 'Name', sortField: 'name', defaultVisible: true },
@@ -62,6 +64,7 @@ const ALL_COLUMNS: { id: ColumnId; label: string; sortField?: SortField; align?:
   { id: 'year', label: 'Period', sortField: 'year', defaultVisible: true },
   { id: 'status', label: 'Status', sortField: 'status', defaultVisible: true },
   { id: 'grade', label: 'Grade', sortField: 'grade', align: 'center', defaultVisible: true },
+  { id: 'projectedGrade', label: 'Proj. Grade', align: 'center', defaultVisible: true },
   { id: 'notes', label: 'Notes', defaultVisible: false },
   { id: 'tags', label: 'Tags', defaultVisible: false },
 ];
@@ -86,6 +89,7 @@ function emptyQuickAdd(year?: number, sem?: number): Record<string, string | num
     type: 'Core',
     status: 'Not Started',
     grade: '',
+    projectedGrade: '',
     year: year || 1,
     semester: sem || 1,
   };
@@ -148,6 +152,9 @@ export function ModuleManagement({ onEditModule, onAddModule }: ModuleManagement
     emptyQuickAdd(),
   ]);
   const [batchDefaults, setBatchDefaults] = useState({ type: 'Core' as string, year: '1', semester: '1' });
+
+  // Expandable timetable section
+  const [expandedModuleId, setExpandedModuleId] = useState<string | null>(null);
 
   // ---------- Filtering & Sorting ----------
 
@@ -245,7 +252,7 @@ export function ModuleManagement({ onEditModule, onAddModule }: ModuleManagement
     const updates: Partial<Module> = {};
     if (field === 'year' || field === 'semester' || field === 'au') {
       (updates as Record<string, number>)[field] = Number(value) || 0;
-    } else if (field === 'grade') {
+    } else if (field === 'grade' || field === 'projectedGrade') {
       (updates as Record<string, Grade>)[field] = (value === '' || value === null ? null : value) as Grade;
     } else {
       (updates as Record<string, string>)[field] = String(value || '');
@@ -289,6 +296,7 @@ export function ModuleManagement({ onEditModule, onAddModule }: ModuleManagement
       type: (quickAdd.type || 'Core') as ModuleType,
       status: (quickAdd.status || 'Not Started') as ModuleStatus,
       grade: quickAdd.grade ? (quickAdd.grade as Grade) : null,
+      projectedGrade: quickAdd.projectedGrade ? (quickAdd.projectedGrade as Grade) : null,
       year: Number(quickAdd.year) || 1,
       semester: Number(quickAdd.semester) || 1,
       prerequisiteCodes: [],
@@ -452,7 +460,7 @@ export function ModuleManagement({ onEditModule, onAddModule }: ModuleManagement
 
   // Keyboard navigation
   keyboardColumnsRef.current = visibleCols.map(c => c.id);
-  const { focusedCell, setFocusedCell } = useTableKeyboard({
+  const { focusedCell } = useTableKeyboard({
     rowCount: filtered.length,
     columnCount: visibleCols.length,
     onEditCell: (row, col) => {
@@ -517,12 +525,12 @@ export function ModuleManagement({ onEditModule, onAddModule }: ModuleManagement
               const globalRowIdx = filtered.indexOf(mod);
               const isRowFocused = focusedCell?.row === globalRowIdx;
               return (
+                <Fragment key={mod.id}>
                 <motion.tr
                   key={mod.id}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  onClick={() => setFocusedCell({ row: globalRowIdx, col: 0 })}
                   className={cn(
                     'hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors',
                     selectedIds.has(mod.id) && 'bg-primary-50/50 dark:bg-primary-900/10',
@@ -676,6 +684,27 @@ export function ModuleManagement({ onEditModule, onAddModule }: ModuleManagement
                             )}
                           />
                         );
+                      case 'projectedGrade':
+                        return (
+                          <EditableCell
+                            key={col.id}
+                            moduleId={mod.id}
+                            field="projectedGrade"
+                            value={mod.projectedGrade ?? null}
+                            type="select"
+                            options={GRADE_OPTIONS}
+                            onSave={handleCellSave}
+                            editingCell={editingCell}
+                            onStartEdit={setEditingCell}
+                            onStopEdit={() => setEditingCell(null)}
+                            className="text-center"
+                            renderDisplay={(v) => (
+                              <span className={cn('font-semibold italic', gradeColor(v as Grade))}>
+                                {v || '—'}
+                              </span>
+                            )}
+                          />
+                        );
                       case 'notes':
                         return (
                           <EditableCell
@@ -728,6 +757,19 @@ export function ModuleManagement({ onEditModule, onAddModule }: ModuleManagement
                   {/* Actions */}
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-1">
+                      {/* Expand timetable */}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setExpandedModuleId(prev => prev === mod.id ? null : mod.id); }}
+                        className={cn(
+                          'p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors',
+                          expandedModuleId === mod.id ? 'text-primary-600 dark:text-primary-400' : 'text-gray-400 hover:text-primary-600 dark:hover:text-primary-400'
+                        )}
+                        title={expandedModuleId === mod.id ? 'Hide timetable' : 'Show timetable'}
+                      >
+                        <svg className={cn('w-4 h-4 transition-transform', expandedModuleId === mod.id && 'rotate-90')} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                      </button>
                       {/* Duplicate */}
                       <button
                         onClick={() => handleDuplicate(mod)}
@@ -765,6 +807,24 @@ export function ModuleManagement({ onEditModule, onAddModule }: ModuleManagement
                     </div>
                   </td>
                 </motion.tr>
+                {/* Expandable timetable section */}
+                {expandedModuleId === mod.id && (
+                  <tr className="bg-gray-50/80 dark:bg-gray-800/40">
+                    <td colSpan={visibleCols.length + 2} className="px-6 py-3">
+                      <div className="max-w-2xl">
+                        <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase mb-2">
+                          Timetable — {mod.code}
+                        </p>
+                        <ModuleTimetableSection
+                          moduleCode={mod.code}
+                          year={mod.year}
+                          semester={mod.semester}
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                )}
+                </Fragment>
               );
             })}
           </AnimatePresence>
@@ -863,6 +923,16 @@ export function ModuleManagement({ onEditModule, onAddModule }: ModuleManagement
                         <InlineSelect
                           value={String(quickAdd.grade)}
                           onChange={e => setQuickAdd(prev => ({ ...prev, grade: e.target.value }))}
+                          options={GRADE_OPTIONS}
+                        />
+                      </td>
+                    );
+                  case 'projectedGrade':
+                    return (
+                      <td key={col.id} className="px-4 py-2">
+                        <InlineSelect
+                          value={String(quickAdd.projectedGrade)}
+                          onChange={e => setQuickAdd(prev => ({ ...prev, projectedGrade: e.target.value }))}
                           options={GRADE_OPTIONS}
                         />
                       </td>

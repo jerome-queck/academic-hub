@@ -16,6 +16,7 @@ export const createModule = (
     name,
     au,
     grade: null,
+    projectedGrade: null,
     type,
     status,
     year,
@@ -31,6 +32,7 @@ export const createStubModule = (code: string): Module => {
     name: 'Unknown Module (Prerequisite)',
     au: 0,
     grade: null,
+    projectedGrade: null,
     type: 'Core', // Default
     status: 'Not Started',
     year: 0, // 0 indicates unassigned
