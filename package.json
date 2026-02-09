@@ -9,11 +9,12 @@
   "scripts": {
     "dev": "vite",
     "dev:electron": "ELECTRON=true concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
+    "clean:release": "node ./scripts/cleanRelease.js",
     "build": "tsc -b && vite build",
-    "build:electron": "ELECTRON=true tsc -b && ELECTRON=true vite build && electron-builder",
-    "build:mac": "ELECTRON=true tsc -b && ELECTRON=true vite build && electron-builder --mac",
-    "build:win": "ELECTRON=true tsc -b && ELECTRON=true vite build && electron-builder --win",
-    "build:linux": "ELECTRON=true tsc -b && ELECTRON=true vite build && electron-builder --linux",
+    "build:electron": "npm run clean:release && ELECTRON=true tsc -b && ELECTRON=true vite build && electron-builder",
+    "build:mac": "npm run clean:release && ELECTRON=true tsc -b && ELECTRON=true vite build && electron-builder --mac",
+    "build:win": "npm run clean:release && ELECTRON=true tsc -b && ELECTRON=true vite build && electron-builder --win",
+    "build:linux": "npm run clean:release && ELECTRON=true tsc -b && ELECTRON=true vite build && electron-builder --linux",
     "lint": "eslint .",
     "preview": "vite preview"
   },

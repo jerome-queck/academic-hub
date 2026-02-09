@@ -13,6 +13,7 @@ npm run dev:electron     # Concurrent Vite + Electron (sets ELECTRON=true)
 
 # Build
 npm run build            # Web: tsc + vite build → dist/
+npm run clean:release    # Remove old release artifacts and recreate release/
 npm run build:mac        # Electron macOS: DMG + ZIP → release/
 npm run build:win        # Electron Windows: NSIS + portable → release/
 npm run build:linux      # Electron Linux: AppImage + DEB → release/
@@ -74,6 +75,12 @@ When making significant changes to the codebase (new features, removed features,
 ## GitHub Push Requirement
 
 When the task is to "commit changes" (or equivalent), do not stop at a local git commit. After committing, you MUST push the commit to the repository's GitHub remote unless the user explicitly asks for a local-only commit.
+
+## Release Cleanliness And Data Safety
+
+Release artifacts in `release/` must stay clean. Before every Electron packaging build (`build:electron`, `build:mac`, `build:win`, `build:linux`), clear old release artifacts so only the latest build outputs remain.
+
+Data safety is mandatory: never delete or modify user data directories (for example app data under `~/Library/Application Support`, `%APPDATA%`, `~/.config`, or any exported/imported user files) when cleaning releases.
 
 ## Commit Message Style
 
