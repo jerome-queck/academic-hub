@@ -68,6 +68,70 @@ Uses CSS-first configuration (`@import "tailwindcss"` in `index.css`). **Critica
 
 When making significant changes to the codebase (new features, removed features, changed commands, updated tech stack, or modified build steps), update `README.md` to reflect those changes. Keep the README in sync with the actual state of the project.
 
+## Release-Driven Workflow
+
+This repository follows a release-driven workflow for meaningful changes.
+
+### PR Policy
+
+- Every meaningful change (feature, fix, refactor, behavior change) should be scoped to a PR.
+- Each PR should target a release intent: `patch`, `minor`, or `major`.
+- Keep each PR focused on one theme.
+- Use `.github/PULL_REQUEST_TEMPLATE.md` for every PR.
+
+### Branching & PR Naming
+
+- Branch naming: `codex/<short-scope>-<ticket-or-date>`
+- PR title format: `[vX.Y.Z] <summary>` or `[minor|patch|major] <summary>`
+
+## Changelog Discipline
+
+`CHANGELOG.md` is the source of truth for user-visible version history.
+
+- Every PR must add/update entries under `## Unreleased` in the correct section (`Added`, `Changed`, `Fixed`, etc.).
+- On release, move `Unreleased` entries into a new versioned section with the real release date in `YYYY-MM-DD`.
+- Keep release notes and changelog entries consistent with `.github/PULL_REQUEST_TEMPLATE.md`.
+- After release, ensure `Unreleased` is reset and a new version section exists.
+
+## Testing & Release Gates
+
+Use confidence gates based on scope/risk:
+
+- Quick validation: `npm run lint` and relevant `npx vitest run ...` coverage.
+- Desktop pre-commit gate: `npm run build:mac` (required; see Pre-Commit Requirements).
+- Release candidate gate: run both packaging builds for desktop distribution:
+  - `npm run build:mac`
+  - `npm run build:win`
+
+Definition of done for meaningful changes:
+
+- Relevant tests/builds pass for the risk level.
+- No lint/build failures.
+- UI-impacting changes include visual evidence or clear verification notes in the PR.
+
+## Release Checklist
+
+Before finalizing a release:
+
+- Update `package.json` version using SemVer (`major.minor.patch`) as appropriate.
+- Update `CHANGELOG.md` under `Unreleased`, then cut a versioned section on release.
+- Ensure release artifacts are clean (use `npm run clean:release` or build scripts that invoke it).
+- Produce both macOS and Windows artifacts before the final release commit:
+  - `npm run build:mac`
+  - `npm run build:win`
+- Verify the release output in `release/` contains expected installers/artifacts.
+- If using GitHub release flow, tag and publish after validations.
+
+## Conflict Resolution Rules
+
+When instructions overlap, apply this precedence:
+
+1. Project-specific commands and technical details in this `CLAUDE.md`.
+2. Existing commit message format and repository conventions already defined here.
+3. Imported release-process guidance (PR/release/changelog discipline) from other project templates.
+
+If a direct conflict exists, preserve this file's original project-specific behavior and adapt the imported process accordingly.
+
 ## Pre-Commit Requirements
 
 **Before every commit, you MUST run `npm run build:mac` and verify it succeeds.** Do not commit if the Electron build fails. Fix any TypeScript errors, lint issues, or build failures first. This ensures the desktop app is always in a buildable state.
@@ -103,6 +167,12 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
 
 Types: `feat`, `fix`, `refactor`, `docs`, `style`, `test`, `chore`, `ci`
 Scopes: `electron`, `ui`, `store`, `gpa`, `analytics`, `planner`, `timetable`, `goals`, `predictions`, `build`
+
+Commit granularity expectations:
+
+- One logical change per commit.
+- Commit completed feature slices promptly after validation.
+- Do not batch unrelated changes in one commit.
 
 Example:
 ```

@@ -1,7 +1,7 @@
 {
   "name": "academic-hub",
   "private": true,
-  "version": "1.0.0",
+  "version": "0.0.0",
   "description": "A desktop academic planning hub for tracking modules, timetable, analytics, and graduation goals.",
   "author": "Academic Hub Team",
   "type": "module",

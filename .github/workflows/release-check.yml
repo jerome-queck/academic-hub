@@ -1,0 +1,109 @@
+name: Release Check
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  quality:
+    name: Lint, Test, Build (Web)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npx vitest run
+
+      - name: Build web
+        run: npm run build
+
+  desktop-macos:
+    name: Build Desktop (macOS)
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build macOS artifacts
+        env:
+          ELECTRON: "true"
+        run: npm run clean:release && npx tsc -b && npx vite build && npx electron-builder --mac --publish=never
+
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-macos
+          path: |
+            release/*.dmg
+            release/*-mac.zip
+          if-no-files-found: error
+
+  desktop-windows:
+    name: Build Desktop (Windows)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Windows zip artifact
+        env:
+          ELECTRON: "true"
+        run: npm run clean:release && npx tsc -b && npx vite build && npx electron-builder --win zip --x64 --publish=never
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-windows
+          path: |
+            release/*-win.zip
+          if-no-files-found: error
+
+  release-gate:
+    name: Release Gate
+    runs-on: ubuntu-latest
+    needs:
+      - quality
+      - desktop-macos
+      - desktop-windows
+    if: always()
+    steps:
+      - name: Enforce required release checks
+        run: |
+          echo "quality: ${{ needs.quality.result }}"
+          echo "desktop-macos: ${{ needs.desktop-macos.result }}"
+          echo "desktop-windows: ${{ needs.desktop-windows.result }}"
+          [ "${{ needs.quality.result }}" = "success" ] || exit 1
+          [ "${{ needs.desktop-macos.result }}" = "success" ] || exit 1
+          [ "${{ needs.desktop-windows.result }}" = "success" ] || exit 1

@@ -180,12 +180,16 @@ Awarded per semester when GPA >= 4.5 **and** at least 15 graded AU in that semes
 
 ## CI/CD
 
-GitHub Actions automatically builds the Electron macOS app on every push to `main`. When a version tag is pushed (e.g., `v1.0.1`), a GitHub Release is created with the DMG and ZIP attached.
+GitHub Actions runs a `Release Check` workflow on pull requests to `main`:
+- Lint, tests, and web build
+- Desktop packaging checks for macOS and Windows artifacts
+
+On version tags (for example `v0.0.0`), the `Desktop Release` workflow builds macOS and Windows release assets and publishes them to GitHub Releases.
 
 ```bash
-# Create a release
-git tag v1.0.1
-git push origin v1.0.1
+# Create and publish a release tag
+git tag v0.0.0
+git push origin v0.0.0
 ```
 
 ## License
